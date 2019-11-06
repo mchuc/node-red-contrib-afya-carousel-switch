@@ -1,0 +1,71 @@
+<!-- /**
+* Lullaby by Marcin Chuć
+* e-mail: marcin ...change it to at... afya.pl
+* (C) 2019
+*/ -->
+<script type="text/javascript">
+  Math.seed = Date.now();
+  RED.nodes.registerType('afya-carousel-switch', {
+    category: 'function',
+    color: '#5EFD00',
+    paletteLabel: 'carousel switch',
+    defaults: {
+      name: {
+        value: ""
+      },
+
+      variableName: {
+        value: "AFYA_" + Math.random().toString(36).substr(2, 5) + Date.now().toString().substr(-3),
+        required: true,
+      },
+      maxValue: {
+        value: 2,
+        required: true,
+        validate: RED.validators.number()
+      },
+
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "electric-switch.png",
+    label: function() {
+      return this.name || "carousel (0  - " + this.maxValue + ")";
+    }
+  });
+
+</script>
+
+<script type="text/x-red" data-template-name="afya-carousel-switch">
+  <div class="form-row">
+         <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+         <input type="text" id="node-input-name" placeholder="Name">
+   </div>
+   <div class="form-row">
+            <label for="node-config-input-variableName"><i class="icon-bookmark"></i> Variable name</label>
+            <input type="text" id="node-input-variableName" placeholder="Your_Unique_Variable_Name">
+        </div>
+  <div class="form-row">
+            <label for="node-config-input-maxValue"><i class="icon-bookmark"></i> Maximum value</label>
+            <input type="text" id="node-input-maxValue" placeholder="more than 0, positive value">
+  </div>
+
+ </script>
+
+<script type="text/x-red" data-help-name="afya-carousel-switch">
+  <p><b>EN</b></p><hr>
+<p>After activation, it increases the value by one, after reaching the maximum value - goes back to zero ... unless as<br>
+<code>
+msg.payload = "rev"
+</code><br>
+then he goes back 1 ... over and over again.
+I created this node for repetitive scenes. Maybe someone will be useful in another purpose :)</p>
+<p><b>PL</b></p><hr>
+<p>
+Po aktywacji zwiększa wartość o jeden, a po osiągnięciu wartości maksymalnej - wraca do zera... chyba, że jako<br>
+<code>
+msg.payload="rev"
+</code><br>
+wtedy cofa się o 1 ... i tak w kółko.
+Utworzsyłem ten węzeł z myślą o powtarzających się scenach. Może komuś przyda się jeszcze w innym celu :)
+</p>
+</script>
