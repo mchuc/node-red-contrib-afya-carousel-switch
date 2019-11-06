@@ -1,2 +1,8 @@
+0.0.5:
+changed the way the carousel rewinds
+carousel reset option added
+added NOOP (no operation) option
+corrected randomization of the variable name for flow (however, this requires opening the node for editing and saving it)
+
 0.0.1:
 - first version

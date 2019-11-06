@@ -2,7 +2,7 @@ EN
 -----
 After activation, it increases the value by one, after reaching the maximum value - goes back to zero ... unless as
 
-msg.payload = "rev"
+msg.payload.rev = "yes"
 
 
 then he goes back 1 ... over and over again.
@@ -12,7 +12,7 @@ PL
 -----
 Po aktywacji zwiększa wartość o jeden, a po osiągnięciu wartości maksymalnej - wraca do zera... chyba, że jako
 
-msg.payload="rev"
+msg.payload.rev="yes"
 
 wtedy cofa się o 1 ... i tak w kółko.
 Utworzyłem ten węzeł z myślą o powtarzających się scenach. Może komuś przyda się jeszcze w innym celu :)

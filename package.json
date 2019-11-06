@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-afya-carousel-switch",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "After activation, it increases the value by one, after reaching the maximum value - goes back to zero ...",
   "keywords": [
     "switch",

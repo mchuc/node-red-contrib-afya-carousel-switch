@@ -15,7 +15,7 @@
       },
 
       variableName: {
-        value: "AFYA_" + Math.random().toString(36).substr(2, 5) + Date.now().toString().substr(-3),
+        value: -1,
         required: true,
       },
       maxValue: {
@@ -30,6 +30,11 @@
     icon: "electric-switch.png",
     label: function() {
       return this.name || "carousel (0  - " + this.maxValue + ")";
+    },
+    oneditprepare: function() {
+      if ($("#node-input-variableName").val() == -1) {
+        $("#node-input-variableName").val("AFYA_" + Math.random().toString(36).substr(2, 5) + Date.now().toString().substr(-7));
+      }
     }
   });
 
@@ -41,11 +46,11 @@
          <input type="text" id="node-input-name" placeholder="Name">
    </div>
    <div class="form-row">
-            <label for="node-config-input-variableName"><i class="icon-bookmark"></i> Variable name</label>
+            <label for="node-input-variableName"><i class="icon-bookmark"></i> Variable name</label>
             <input type="text" id="node-input-variableName" placeholder="Your_Unique_Variable_Name">
         </div>
   <div class="form-row">
-            <label for="node-config-input-maxValue"><i class="icon-bookmark"></i> Maximum value</label>
+            <label for="node-input-maxValue"><i class="icon-bookmark"></i> Maximum value</label>
             <input type="text" id="node-input-maxValue" placeholder="more than 0, positive value">
   </div>
 
@@ -54,18 +59,39 @@
 <script type="text/x-red" data-help-name="afya-carousel-switch">
   <p><b>EN</b></p><hr>
 <p>After activation, it increases the value by one, after reaching the maximum value - goes back to zero ... unless as<br>
+Reverse carousel order:
 <code>
-msg.payload = "rev"
+msg.payload.rev = "yes"
 </code><br>
-then he goes back 1 ... over and over again.
+
+  Carousel reset - forward direction will always show 0 and reverse direction maxValue
+  <code>
+  msg.payload.reset = "yes"
+  </code><br>
+  Noop: no operation (used only for reset, no operation - i.e. lighting up)
+  <code>
+  msg.payload.noop = "yes"
+  </code><br>
+
+
 I created this node for repetitive scenes. Maybe someone will be useful in another purpose :)</p>
 <p><b>PL</b></p><hr>
 <p>
 Po aktywacji zwiększa wartość o jeden, a po osiągnięciu wartości maksymalnej - wraca do zera... chyba, że jako<br>
+Odwrócenie kolejności karuzeli:
 <code>
-msg.payload="rev"
+msg.payload.rev = "yes"
 </code><br>
-wtedy cofa się o 1 ... i tak w kółko.
-Utworzsyłem ten węzeł z myślą o powtarzających się scenach. Może komuś przyda się jeszcze w innym celu :)
+
+Reset karuzeli - kierunek do przodu zawsze wskaże 0, a kierunek do tyłu maxValue
+  <code>
+  msg.payload.reset = "yes"
+  </code><br>
+  Noop: brak operacji (wykorzystane tylko dla resetu, bez wykonywania operacji - czyli np. zapalania światła)
+  <code>
+  msg.payload.noop = "yes"
+  </code><br>
+
+Utworzyłem ten węzeł z myślą o powtarzających się scenach. Może komuś przyda się jeszcze w innym celu :)
 </p>
 </script>

@@ -14,26 +14,76 @@ module.exports = function(RED) {
     var node = this;
     node.on('input', function(msg) {
 
-      // direction ff or rev (default ff)
-      var direction = 1;
-      // small message changes all... like in live ;)
-      if ('payload' in msg) {
-        if (String(msg['payload']).toLowerCase() == "rev") {
-          direction = -1;
-        }
+      if (config.variableName == -1) {
+        this.status({
+          fill: "red",
+          shape: "dot",
+          text: "missconfigured - open dialog && save variableName <" + timeConvert(Date.now()) + ">"
+        });
+        return;
       }
 
-      //first run, and i want allways to start with 0 value
-      myValue = this.context().flow.get(config.variableName);
-      if (myValue === undefined) {
-        var myValue = -direction;
-      }
+
+
+      // direction ff or rev (default ff)
+      var direction = 1;
+      // small messages changes all... like in live ;)
+
+      if ('payload' in msg) {
+        var pL = msg['payload'];
+        if (getType(pL) == 'object') {
+
+          //change direction
+          if ('rev' in pL) {
+            if (String(pL.rev).toLowerCase() == "yes") {
+              direction = -1;
+            }
+          }
+          //reset counter to undefined (next run = value: 0 , (reverse direction): value:  maxValue)
+          if ('reset' in pL) {
+            if (String(pL.reset).toLowerCase() == "yes") {
+              this.context().flow.set(config.variableName, undefined)
+              this.status({
+                fill: "yellow",
+                shape: "dot",
+                text: "reset <" + timeConvert(Date.now()) + ">"
+              });
+            }
+          }
+
+
+          //no operation - if wana just reset - do nothing after
+          if ('noop' in pL) {
+            if (String(pL.noop).toLowerCase() == "yes") {
+              this.status({
+                fill: "blue",
+                shape: "ring",
+                text: "NOOP! <" + timeConvert(Date.now()) + ">"
+              });
+              return;
+            }
+          }
+
+        } //end: payload is Array/Object
+      } // end : payload
 
       // some to check
       var maxValue = Math.round(Math.abs(config.maxValue));
       if (maxValue < 1) {
         maxValue = 1;
       }
+
+      //first run, and i want allways to start with 0 value (normal direction) and maxValue (reverse direction)
+      myValue = this.context().flow.get(config.variableName);
+      if (myValue === undefined) {
+        if (direction > 0) {
+          var myValue = -direction;
+        } else {
+          var myValue = maxValue + 1;
+        }
+      }
+
+
 
       myValue = myValue + direction; //inc or dec value, depends direction
 
@@ -74,6 +124,17 @@ module.exports = function(RED) {
     var d = new Date(myTimeStamp);
     var time = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours(), d.getMinutes(), d.getSeconds()].join(':');
     return time;
+  }
+
+  /**
+  function getType returns information if object is Array or Object
+  from: https://stackoverflow.com/questions/11182924/how-to-check-if-javascript-object-is-json
+  */
+  function getType(p) {
+    if (Array.isArray(p)) return 'array';
+    else if (typeof p == 'string') return 'string';
+    else if (p != null && typeof p == 'object') return 'object';
+    else return 'other';
   }
 
 
