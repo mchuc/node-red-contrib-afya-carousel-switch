@@ -1,144 +1,74 @@
 /**
- * Lullaby Marcin Chuć
- * e-mail: marcin ...change it to at... afya.pl
- * (C) 2019
+ * AFYA Carousel Switch – every message moves the value one step: 0, 1, 2 … max, 0 …
+ * (C) 2019–2026 Marcin Chuć · MIT
  */
+'use strict';
 
-module.exports = function(RED) {
+function hhmmss(d = new Date()) {
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+}
 
-  /**
-   main function
-  */
+/** "yes", true, 1, "true", "on" → true */
+function flag(v) {
+  return v === true || v === 1 || ['yes', 'true', '1', 'on'].includes(String(v).trim().toLowerCase());
+}
+
+/** Next carousel position. `current` undefined → start (0 forward, max backward). */
+function nextValue(current, maxValue, direction) {
+  if (typeof current !== 'number' || Number.isNaN(current)) {
+    return direction > 0 ? 0 : maxValue;
+  }
+  const next = current + direction;
+  if (direction > 0) return next > maxValue ? 0 : next;
+  return next < 0 ? maxValue : Math.min(next, maxValue);
+}
+
+module.exports = function (RED) {
   function AFYACarouselSwitch(config) {
     RED.nodes.createNode(this, config);
-    var node = this;
-    node.on('input', function(msg) {
+    const node = this;
 
-      if (config.variableName == -1) {
-        this.status({
-          fill: "red",
-          shape: "dot",
-          text: "missconfigured - open dialog && save variableName <" + timeConvert(Date.now()) + ">"
-        });
-        return;
+    // legacy nodes (no scope saved) keep using flow context
+    const scope = config.scope === 'global' ? 'global' : 'flow';
+    let name = String(config.variableName === undefined ? '' : config.variableName).trim();
+    if (!name || name === '-1') name = `AFYA_carousel_${node.id}`;
+    const { key, store } = RED.util.parseContextStore(name);
+    const ctx = () => node.context()[scope];
+
+    let maxValue = Math.round(Math.abs(Number(config.maxValue)));
+    if (!Number.isFinite(maxValue) || maxValue < 1) maxValue = 1;
+
+    node.status({ fill: 'grey', shape: 'ring', text: `${scope}.${key} · 0…${maxValue}` });
+
+    node.on('input', (msg, send, done) => {
+      const cmd = msg.payload !== null && typeof msg.payload === 'object' && !Array.isArray(msg.payload) ? msg.payload : {};
+      const direction = flag(cmd.rev) ? -1 : 1;
+
+      if (flag(cmd.reset)) {
+        ctx().set(key, undefined, store);
+        node.status({ fill: 'yellow', shape: 'dot', text: `reset · ${hhmmss()}` });
+      }
+      if (flag(cmd.noop)) {
+        node.status({ fill: 'blue', shape: 'ring', text: `no operation · ${hhmmss()}` });
+        return done();
       }
 
+      const value = nextValue(ctx().get(key, store), maxValue, direction);
+      ctx().set(key, value, store);
 
-
-      // direction ff or rev (default ff)
-      var direction = 1;
-      // small messages changes all... like in live ;)
-
-      if ('payload' in msg) {
-        var pL = msg['payload'];
-        if (getType(pL) == 'object') {
-
-          //change direction
-          if ('rev' in pL) {
-            if (String(pL.rev).toLowerCase() == "yes") {
-              direction = -1;
-            }
-          }
-          //reset counter to undefined (next run = value: 0 , (reverse direction): value:  maxValue)
-          if ('reset' in pL) {
-            if (String(pL.reset).toLowerCase() == "yes") {
-              this.context().flow.set(config.variableName, undefined)
-              this.status({
-                fill: "yellow",
-                shape: "dot",
-                text: "reset <" + timeConvert(Date.now()) + ">"
-              });
-            }
-          }
-
-
-          //no operation - if wana just reset - do nothing after
-          if ('noop' in pL) {
-            if (String(pL.noop).toLowerCase() == "yes") {
-              this.status({
-                fill: "blue",
-                shape: "ring",
-                text: "NOOP! <" + timeConvert(Date.now()) + ">"
-              });
-              return;
-            }
-          }
-
-        } //end: payload is Array/Object
-      } // end : payload
-
-      // some to check
-      var maxValue = Math.round(Math.abs(config.maxValue));
-      if (maxValue < 1) {
-        maxValue = 1;
-      }
-
-      //first run, and i want allways to start with 0 value (normal direction) and maxValue (reverse direction)
-      myValue = this.context().flow.get(config.variableName);
-      if (myValue === undefined) {
-        if (direction > 0) {
-          var myValue = -direction;
-        } else {
-          var myValue = maxValue + 1;
-        }
-      }
-
-
-
-      myValue = myValue + direction; //inc or dec value, depends direction
-
-      if (direction > 0) {
-        if (myValue > maxValue) {
-          myValue = 0; // 0...1...2...max...0...
-        }
-      } else {
-        if (myValue < 0) {
-          myValue = maxValue; // 3..2..1..0... max ...3..
-        }
-      }
-
-      this.status({
-        fill: "green",
-        shape: "ring",
-        text: (direction > 0 ? "-->>" : "<<--") + " value: " + myValue + " (max:" + maxValue + ") <" + timeConvert(Date.now()) + ">"
+      node.status({
+        fill: 'green',
+        shape: 'dot',
+        text: `${direction > 0 ? '→' : '←'} ${value} / ${maxValue} · ${hhmmss()}`,
       });
 
-      msg = {
-        payload: {
-          direction: direction,
-          timestamp: Date.now(),
-          value: myValue,
-          maxValue: maxValue
-        }
-      }
-      this.context().flow.set(config.variableName, myValue);
-      node.send(msg);
-
+      msg.payload = { direction, timestamp: Date.now(), value, maxValue };
+      send(msg);
+      done();
     });
   }
 
-  /**
-  function timeConvert returns string from given timestamp as i.e.: 2010-10-1 17:09:11
-  */
-  function timeConvert(myTimeStamp) {
-    var d = new Date(myTimeStamp);
-    var time = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours(), d.getMinutes(), d.getSeconds()].join(':');
-    return time;
-  }
+  RED.nodes.registerType('afya-carousel-switch', AFYACarouselSwitch);
+};
 
-  /**
-  function getType returns information if object is Array or Object
-  from: https://stackoverflow.com/questions/11182924/how-to-check-if-javascript-object-is-json
-  */
-  function getType(p) {
-    if (Array.isArray(p)) return 'array';
-    else if (typeof p == 'string') return 'string';
-    else if (p != null && typeof p == 'object') return 'object';
-    else return 'other';
-  }
-
-
-
-  //register node
-  RED.nodes.registerType("afya-carousel-switch", AFYACarouselSwitch);
-}
+module.exports.nextValue = nextValue;

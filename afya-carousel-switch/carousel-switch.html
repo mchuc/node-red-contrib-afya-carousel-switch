@@ -1,97 +1,155 @@
-<!-- /**
-* Lullaby by Marcin Chuć
-* e-mail: marcin ...change it to at... afya.pl
-* (C) 2019
-*/ -->
+<!--
+  AFYA Carousel Switch – every message moves the value one step: 0, 1, 2 … max, 0 …
+  (C) 2019–2026 Marcin Chuć · MIT
+-->
+<style>
+  /* AFYA – common editor style (identical in all AFYA nodes) */
+  .afya-form .form-row > label { width: 130px; }
+  .afya-form .afya-section {
+    display: flex; align-items: center; gap: 7px;
+    margin: 18px 0 10px; padding-bottom: 5px;
+    border-bottom: 1px solid var(--red-ui-secondary-border-color, #ddd);
+    color: var(--red-ui-primary-text-color, #555);
+    font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .afya-form .afya-section > i { color: #3E9C86; width: 14px; text-align: center; }
+  .afya-form .afya-hint { margin: -4px 0 12px 134px; font-size: 12px; line-height: 1.45; color: var(--red-ui-secondary-text-color, #888); }
+  .afya-form .afya-hint code { font-size: 11px; }
+  .afya-form .afya-check { display: flex; align-items: center; gap: 8px; margin: 0 0 12px 134px; }
+  .afya-form .afya-check input { width: auto; margin: 0; }
+  .afya-form .afya-check label { width: auto; margin: 0; cursor: pointer; }
+  .afya-form .afya-unit { margin-left: 8px; color: var(--red-ui-secondary-text-color, #888); }
+  .afya-form .afya-summary {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-top: 18px; padding: 10px 12px; border-radius: 6px;
+    border-left: 4px solid #6CC1AD;
+    background: var(--red-ui-tertiary-background, #f7f7f7);
+    color: var(--red-ui-primary-text-color, #555); font-size: 12px; line-height: 1.55;
+  }
+  .afya-form .afya-summary > i { margin-top: 3px; color: #3E9C86; }
+  .afya-form .afya-summary code { font-size: 11px; }
+</style>
+
 <script type="text/javascript">
-  Math.seed = Date.now();
-  RED.nodes.registerType('afya-carousel-switch', {
-    category: 'function',
-    color: '#5EFD00',
-    paletteLabel: 'carousel switch',
-    defaults: {
-      name: {
-        value: ""
-      },
+  (function () {
+    const randomName = (prefix) => prefix + Math.random().toString(36).slice(2, 7) + Date.now().toString().slice(-5);
+    const plainKey = (v) => String(v || '').replace(/^#:\(\S+?\)::/, '');
 
-      variableName: {
-        value: -1,
-        required: true,
+    RED.nodes.registerType('afya-carousel-switch', {
+      category: 'AFYA',
+      color: '#A6DCCF',
+      paletteLabel: 'carousel switch',
+      icon: 'font-awesome/fa-refresh',
+      inputs: 1,
+      outputs: 1,
+      inputLabels: 'step (optional msg.payload.rev / reset / noop)',
+      outputLabels: 'msg.payload = { value, maxValue, direction, timestamp }',
+      defaults: {
+        name: { value: '' },
+        variableName: { value: '', required: true },
+        scope: { value: 'global' },
+        maxValue: {
+          value: 2,
+          required: true,
+          validate: function (v) { return /^\d+$/.test(String(v)) && Number(v) >= 1; },
+        },
       },
-      maxValue: {
-        value: 2,
-        required: true,
-        validate: RED.validators.number()
+      label: function () {
+        return this.name || 'carousel 0…' + this.maxValue;
       },
+      labelStyle: function () {
+        return this.name ? 'node_label_italic' : '';
+      },
+      oneditprepare: function () {
+        // nodes saved before 0.1.0 have no scope → they used flow context
+        if (!this.scope) $('#node-input-scope').val('flow');
+        const name = $('#node-input-variableName');
+        if (!plainKey(name.val()) || name.val() === '-1') name.val(randomName('AFYA_'));
+        name.typedInput({ types: ['global', 'flow'], typeField: '#node-input-scope' });
 
-    },
-    inputs: 1,
-    outputs: 1,
-    icon: "electric-switch.png",
-    label: function() {
-      return this.name || "carousel (0  - " + this.maxValue + ")";
-    },
-    oneditprepare: function() {
-      if ($("#node-input-variableName").val() == -1) {
-        $("#node-input-variableName").val("AFYA_" + Math.random().toString(36).substr(2, 5) + Date.now().toString().substr(-7));
-      }
-    }
-  });
+        $('#node-input-maxValue').spinner({ min: 1, step: 1 });
 
+        const summary = function () {
+          const max = Math.max(1, parseInt($('#node-input-maxValue').val(), 10) || 1);
+          const seq = [];
+          for (let i = 0; i <= Math.min(max, 4); i++) seq.push(i);
+          const forward = seq.join(' → ') + (max > 4 ? ' → … → ' + max : '') + ' → 0 …';
+          const scope = name.typedInput('type');
+          const key = $('<span>').text(plainKey(name.typedInput('value')) || '…').html();
+          $('#afya-carousel-summary').html(
+            'Each message: <b>' + forward + '</b><br>' +
+            'Position is kept in <code>' + scope + '.' + key + '</code>.'
+          );
+        };
+        name.on('change', summary);
+        $('#node-input-maxValue').on('change keyup spin spinstop', function () { setTimeout(summary, 0); });
+        summary();
+      },
+    });
+  })();
 </script>
 
-<script type="text/x-red" data-template-name="afya-carousel-switch">
-  <div class="form-row">
-         <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-         <input type="text" id="node-input-name" placeholder="Name">
-   </div>
-   <div class="form-row">
-            <label for="node-input-variableName"><i class="icon-bookmark"></i> Variable name</label>
-            <input type="text" id="node-input-variableName" placeholder="Your_Unique_Variable_Name">
-        </div>
-  <div class="form-row">
-            <label for="node-input-maxValue"><i class="icon-bookmark"></i> Maximum value</label>
-            <input type="text" id="node-input-maxValue" placeholder="more than 0, positive value">
+<script type="text/html" data-template-name="afya-carousel-switch">
+  <div class="afya-form">
+    <div class="form-row">
+      <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="optional" style="width: 65%;">
+    </div>
+
+    <div class="afya-section"><i class="fa fa-refresh"></i> Carousel</div>
+    <div class="form-row">
+      <label for="node-input-maxValue"><i class="fa fa-sort-numeric-asc"></i> Maximum value</label>
+      <input type="text" id="node-input-maxValue" style="width: 80px;">
+      <span class="afya-unit">positions 0 … max</span>
+    </div>
+
+    <div class="afya-section"><i class="fa fa-database"></i> Context variable</div>
+    <div class="form-row">
+      <label for="node-input-variableName"><i class="fa fa-globe"></i> Variable</label>
+      <input type="text" id="node-input-variableName" style="width: 65%;">
+      <input type="hidden" id="node-input-scope">
+    </div>
+    <div class="afya-hint">Stores the current position. Choose <b>global</b> to read it from any flow.</div>
+
+    <div class="afya-summary"><i class="fa fa-info-circle"></i><span id="afya-carousel-summary"></span></div>
   </div>
+</script>
 
- </script>
+<script type="text/html" data-help-name="afya-carousel-switch">
+  <p>Every message moves the value one step forward: <code>0 → 1 → 2 → … → max → 0</code>.
+    Made for scenes that are switched with one button.</p>
 
-<script type="text/x-red" data-help-name="afya-carousel-switch">
-  <p><b>EN</b></p><hr>
-<p>After activation, it increases the value by one, after reaching the maximum value - goes back to zero ... unless as<br>
-Reverse carousel order:
-<code>
-msg.payload.rev = "yes"
-</code><br>
+  <h3>Inputs</h3>
+  <dl class="message-properties">
+    <dt class="optional">payload.rev <span class="property-type">"yes" | true</span></dt>
+    <dd>Step backwards: <code>max → … → 1 → 0 → max</code>.</dd>
+    <dt class="optional">payload.reset <span class="property-type">"yes" | true</span></dt>
+    <dd>Start from the beginning – the next value will be <code>0</code> (or <code>max</code> backwards).</dd>
+    <dt class="optional">payload.noop <span class="property-type">"yes" | true</span></dt>
+    <dd>No operation – nothing is sent. Use with <code>reset</code> to only reset the carousel.</dd>
+  </dl>
 
-  Carousel reset - forward direction will always show 0 and reverse direction maxValue
-  <code>
-  msg.payload.reset = "yes"
-  </code><br>
-  Noop: no operation (used only for reset, no operation - i.e. lighting up)
-  <code>
-  msg.payload.noop = "yes"
-  </code><br>
+  <h3>Outputs</h3>
+  <dl class="message-properties">
+    <dt>payload.value <span class="property-type">number</span></dt>
+    <dd>Current position.</dd>
+    <dt>payload.maxValue <span class="property-type">number</span></dt>
+    <dd>Configured maximum.</dd>
+    <dt>payload.direction <span class="property-type">1 | -1</span></dt>
+    <dd><code>1</code> forward, <code>-1</code> backward.</dd>
+    <dt>payload.timestamp <span class="property-type">number</span></dt>
+    <dd>Time of the step (ms).</dd>
+  </dl>
 
+  <h3>Details</h3>
+  <p>The position is stored in a <b>global</b> or <b>flow</b> context variable, so other nodes can read it,
+    e.g. <code>global.get("AFYA_…")</code>. Nodes created before version 0.1.0 keep using <b>flow</b>
+    until you change it. Other properties of the incoming message (e.g. <code>msg.topic</code>) are passed through.</p>
 
-I created this node for repetitive scenes. Maybe someone will be useful in another purpose :)</p>
-<p><b>PL</b></p><hr>
-<p>
-Po aktywacji zwiększa wartość o jeden, a po osiągnięciu wartości maksymalnej - wraca do zera... chyba, że jako<br>
-Odwrócenie kolejności karuzeli:
-<code>
-msg.payload.rev = "yes"
-</code><br>
+  <h3>Polski</h3>
+  <p>Każda wiadomość zwiększa wartość o 1, po maksimum wraca do 0. <code>msg.payload.rev = "yes"</code> – krok w tył,
+    <code>reset = "yes"</code> – start od początku, <code>noop = "yes"</code> – bez wysyłania (np. sam reset).
+    Pozycja jest w zmiennej <b>global</b> lub <b>flow</b> – dostępna z innych flow.</p>
 
-Reset karuzeli - kierunek do przodu zawsze wskaże 0, a kierunek do tyłu maxValue
-  <code>
-  msg.payload.reset = "yes"
-  </code><br>
-  Noop: brak operacji (wykorzystane tylko dla resetu, bez wykonywania operacji - czyli np. zapalania światła)
-  <code>
-  msg.payload.noop = "yes"
-  </code><br>
-
-Utworzyłem ten węzeł z myślą o powtarzających się scenach. Może komuś przyda się jeszcze w innym celu :)
-</p>
+  <p><small>Marcin Chuć · MIT</small></p>
 </script>

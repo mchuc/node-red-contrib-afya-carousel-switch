@@ -1,3 +1,14 @@
+0.1.0 (2026-11-25):
+- Variable scope: global or flow (new nodes: global, existing nodes keep flow) + context stores
+- Works without opening the dialog first (old default name -1 → per-node name)
+- rev / reset / noop accept "yes" or true
+- Message properties (e.g. msg.topic) are kept
+- Fixed: backward step when the stored value is above a new maximum
+- New modern edit dialog (sections, live summary, spinners, validation), palette category "AFYA",
+  Font Awesome icon, English UI with English + Polish help
+- Short, consistent node status (value · time)
+- MIT license, Node-RED >= 3.0, Node.js >= 18, unit tests (`npm test`)
+
 0.0.5:
 changed the way the carousel rewinds
 carousel reset option added
