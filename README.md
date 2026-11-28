@@ -24,6 +24,7 @@ Requires Node-RED ≥ 3.0 and Node.js ≥ 18. The node appears in the **AFYA** p
 
 | Field | Description |
 |---|---|
+| Labels | Language of the descriptions in the edit dialog: *system language* (Polish for a Polish system, English for all others), *English* or *Polski*. Only the descriptions change – fields and values stay the same. |
 | **Maximum value** | Highest position; the carousel goes `0 … max`. |
 | **Variable** | Context variable with the current position – `global` (readable from any flow) or `flow`, optionally in a chosen context store. New nodes get a unique name. |
 | **Name** | Optional label. |
@@ -76,6 +77,7 @@ Wymaga Node-RED ≥ 3.0 i Node.js ≥ 18. Węzeł **carousel switch** jest w gru
 
 | Pole | Opis |
 |---|---|
+| Labels (Etykiety) | Język opisów w oknie konfiguracji: *język systemu* (polski dla polskiego systemu, angielski dla każdego innego), *English* albo *Polski*. Zmieniają się tylko opisy – pola i wartości zostają takie same. |
 | **Maximum value** | Najwyższa pozycja; karuzela chodzi `0 … max`. |
 | **Variable** | Zmienna z bieżącą pozycją – `global` (dostępna z każdego flow) lub `flow`, opcjonalnie w wybranym magazynie kontekstu. Nowy węzeł dostaje unikalną nazwę. |
 

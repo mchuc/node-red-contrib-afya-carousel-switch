@@ -34,6 +34,57 @@
   (function () {
     const randomName = (prefix) => prefix + Math.random().toString(36).slice(2, 7) + Date.now().toString().slice(-5);
     const plainKey = (v) => String(v || '').replace(/^#:\(\S+?\)::/, '');
+    const TEXTS = {
+      en: {
+        name: 'Name', namePh: 'optional', lang: 'Labels', langAuto: 'system language ({l})',
+        secCarousel: 'Carousel', max: 'Maximum value', maxUnit: 'positions 0 … max',
+        secVar: 'Context variable', variable: 'Variable',
+        varHint: 'Stores the current position. Choose <b>global</b> to read it from any flow.',
+        sEach: 'Each message:', sKept: 'Position is kept in {v}.',
+      },
+      pl: {
+        name: 'Nazwa', namePh: 'opcjonalnie', lang: 'Etykiety', langAuto: 'język systemu ({l})',
+        secCarousel: 'Karuzela', max: 'Wartość maksymalna', maxUnit: 'pozycje 0 … max',
+        secVar: 'Zmienna kontekstu', variable: 'Zmienna',
+        varHint: 'Przechowuje bieżącą pozycję. Wybierz <b>global</b>, żeby czytać ją z każdego flow.',
+        sEach: 'Każda wiadomość:', sKept: 'Pozycja jest trzymana w {v}.',
+      },
+    };
+    // --- AFYA: język opisów w oknie konfiguracji („Labels”): auto = polski tylko dla polskiego systemu,
+    //     angielski dla wszystkich innych; zmieniają się tylko opisy – nigdy pola ani wartości.
+    const afyaSystemLocale = function () {
+      try {
+        return localStorage.getItem('editor-language') || navigator.language || '';
+      } catch (e) {
+        return navigator.language || '';
+      }
+    };
+    const afyaLang = function (setting) {
+      if (setting === 'pl' || setting === 'en') return setting;
+      return /^pl\b|^pl[-_]/i.test(afyaSystemLocale()) ? 'pl' : 'en';
+    };
+    /** Tłumaczy otwarte okno (data-t, data-t-ph, data-t-title) i zwraca T(klucz, zmienne) dla tekstów z kodu. */
+    const afyaApplyLang = function (form, texts, setting) {
+      const lang = afyaLang(setting);
+      const T = function (k, v) {
+        let s = (texts[lang] && texts[lang][k]) || texts.en[k] || k;
+        Object.keys(v || {}).forEach(function (n) {
+          s = s.split('{' + n + '}').join(v[n]);
+        });
+        return s;
+      };
+      form.find('[data-t]').each(function () {
+        $(this).html(T($(this).attr('data-t')));
+      });
+      form.find('[data-t-ph]').each(function () {
+        $(this).attr('placeholder', T($(this).attr('data-t-ph')));
+      });
+      form.find('[data-t-title]').each(function () {
+        $(this).attr('title', T($(this).attr('data-t-title')));
+      });
+      form.find('#node-input-lang option[value="auto"]').text(T('langAuto', { l: afyaLang('auto') === 'pl' ? 'Polski' : 'English' }));
+      return T;
+    };
 
     RED.nodes.registerType('afya-carousel-switch', {
       category: 'AFYA',
@@ -46,6 +97,7 @@
       outputLabels: 'msg.payload = { value, maxValue, direction, timestamp }',
       defaults: {
         name: { value: '' },
+        lang: { value: 'auto' },
         variableName: { value: '', required: true },
         scope: { value: 'global' },
         maxValue: {
@@ -61,6 +113,9 @@
         return this.name ? 'node_label_italic' : '';
       },
       oneditprepare: function () {
+        if (['auto', 'en', 'pl'].indexOf(this.lang) < 0) $('#node-input-lang').val('auto'); // starsze węzły
+        const form = $('#node-input-lang').closest('.afya-form');
+        let T = afyaApplyLang(form, TEXTS, $('#node-input-lang').val());
         // nodes saved before 0.1.0 have no scope → they used flow context
         if (!this.scope) $('#node-input-scope').val('flow');
         const name = $('#node-input-variableName');
@@ -77,12 +132,16 @@
           const scope = name.typedInput('type');
           const key = $('<span>').text(plainKey(name.typedInput('value')) || '…').html();
           $('#afya-carousel-summary').html(
-            'Each message: <b>' + forward + '</b><br>' +
-            'Position is kept in <code>' + scope + '.' + key + '</code>.'
+            T('sEach') + ' <b>' + forward + '</b><br>' +
+            T('sKept', { v: '<code>' + scope + '.' + key + '</code>' })
           );
         };
         name.on('change', summary);
         $('#node-input-maxValue').on('change keyup spin spinstop', function () { setTimeout(summary, 0); });
+        $('#node-input-lang').on('change', function () {
+          T = afyaApplyLang(form, TEXTS, $(this).val());
+          summary();
+        });
         summary();
       },
     });
@@ -92,24 +151,32 @@
 <script type="text/html" data-template-name="afya-carousel-switch">
   <div class="afya-form">
     <div class="form-row">
-      <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-      <input type="text" id="node-input-name" placeholder="optional" style="width: 65%;">
+      <label for="node-input-name"><i class="fa fa-tag"></i> <span data-t="name">Name</span></label>
+      <input type="text" id="node-input-name" data-t-ph="namePh" placeholder="optional" style="width: 65%;">
+    </div>
+    <div class="form-row">
+      <label for="node-input-lang"><i class="fa fa-language"></i> <span data-t="lang">Labels</span></label>
+      <select id="node-input-lang" style="width: 65%;">
+        <option value="auto">system language</option>
+        <option value="en">English</option>
+        <option value="pl">Polski</option>
+      </select>
     </div>
 
-    <div class="afya-section"><i class="fa fa-refresh"></i> Carousel</div>
+    <div class="afya-section"><i class="fa fa-refresh"></i> <span data-t="secCarousel">Carousel</span></div>
     <div class="form-row">
-      <label for="node-input-maxValue"><i class="fa fa-sort-numeric-asc"></i> Maximum value</label>
+      <label for="node-input-maxValue"><i class="fa fa-sort-numeric-asc"></i> <span data-t="max">Maximum value</span></label>
       <input type="text" id="node-input-maxValue" style="width: 80px;">
-      <span class="afya-unit">positions 0 … max</span>
+      <span class="afya-unit" data-t="maxUnit">positions 0 … max</span>
     </div>
 
-    <div class="afya-section"><i class="fa fa-database"></i> Context variable</div>
+    <div class="afya-section"><i class="fa fa-database"></i> <span data-t="secVar">Context variable</span></div>
     <div class="form-row">
-      <label for="node-input-variableName"><i class="fa fa-globe"></i> Variable</label>
+      <label for="node-input-variableName"><i class="fa fa-globe"></i> <span data-t="variable">Variable</span></label>
       <input type="text" id="node-input-variableName" style="width: 65%;">
       <input type="hidden" id="node-input-scope">
     </div>
-    <div class="afya-hint">Stores the current position. Choose <b>global</b> to read it from any flow.</div>
+    <div class="afya-hint" data-t="varHint">Stores the current position. Choose <b>global</b> to read it from any flow.</div>
 
     <div class="afya-summary"><i class="fa fa-info-circle"></i><span id="afya-carousel-summary"></span></div>
   </div>
